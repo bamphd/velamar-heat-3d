@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>VELAMAR 3D — Sun-Soaked Island Crime Empire</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #1a0f08;
+    font-family: 'Segoe UI', system-ui, sans-serif; color: #fff; }
+  #game, #game canvas { width: 100%; height: 100%; display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 5; }
+  .panel { background: rgba(8, 12, 20, 0.72); border: 1px solid rgba(255, 210, 74, 0.35);
+    border-radius: 8px; padding: 8px 12px; }
+  #top-left { position: absolute; top: 12px; left: 12px; min-width: 240px; }
+  #stars { font-size: 26px; letter-spacing: 2px; line-height: 1; }
+  .star { color: #444; text-shadow: 0 0 2px #000; }
+  .star.on { color: #ffd24a; text-shadow: 0 0 8px #ff9a00; }
+  .bar { height: 10px; background: #222; border-radius: 5px; margin-top: 6px; overflow: hidden; }
+  .bar > div { height: 100%; }
+  #health-fill { background: linear-gradient(90deg, #2aff66, #7aff9a); width: 100%; }
+  #armor-fill { background: linear-gradient(90deg, #2a7aff, #7ac8ff); width: 0%; }
+  #health-text { font-size: 11px; color: #cfe8d8; margin-top: 3px; }
+  #money { font-size: 24px; font-weight: 800; color: #7aff9a; margin-top: 6px; }
+  #respect { font-size: 12px; color: #ffd24a; }
+  #top-right { position: absolute; top: 12px; right: 12px; text-align: right; }
+  #clock { font-size: 26px; font-weight: 700; }
+  #district { font-size: 15px; font-weight: 700; color: #ffd24a; letter-spacing: 1px; }
+  #radio { font-size: 12px; color: #9ad8ff; }
+  #bottom-left { position: absolute; left: 12px; bottom: 12px; }
+  #minimap { width: 180px; height: 180px; border: 2px solid rgba(255, 210, 74, 0.6); border-radius: 6px; background: #0a2030; }
+  #territory { margin-top: 6px; font-size: 10px; width: 180px; }
+  .terr { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+  .terr span { width: 74px; color: #cfe8d8; }
+  .terr-bar { flex: 1; height: 6px; background: #222; border-radius: 3px; overflow: hidden; }
+  .terr-bar > div { height: 100%; background: #ffd24a; }
+  .terr b { width: 28px; text-align: right; }
+  #bottom-right { position: absolute; right: 12px; bottom: 12px; text-align: right; }
+  #speed { font-size: 30px; font-weight: 800; }
+  #weapon { font-size: 14px; color: #ffd24a; }
+  #ammo { font-size: 11px; color: #cfe8d8; }
+  #objective { position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    font-size: 15px; font-weight: 700; text-align: center; max-width: 560px;
+    text-shadow: 0 2px 4px #000; background: rgba(8, 12, 20, 0.6); padding: 6px 14px; border-radius: 6px; }
+  #feed { position: absolute; top: 64px; left: 50%; transform: translateX(-50%);
+    text-align: center; font-size: 13px; font-weight: 600; text-shadow: 0 1px 3px #000; line-height: 1.5; }
+  #prompt { position: absolute; bottom: 200px; left: 50%; transform: translateX(-50%);
+    font-size: 14px; font-weight: 700; color: #ffd24a; text-shadow: 0 2px 4px #000; }
+  #controls-hint { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; color: rgba(255,255,255,0.65); text-shadow: 0 1px 2px #000; white-space: nowrap; }
+  #wheel { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; gap: 14px; }
+  .wheel-slot { width: 150px; background: rgba(8, 12, 20, 0.85); border: 2px solid #444; border-radius: 10px;
+    padding: 14px; text-align: center; }
+  .wheel-slot.sel { border-color: #ffd24a; box-shadow: 0 0 18px rgba(255, 210, 74, 0.6); }
+  .wheel-slot.locked { opacity: 0.55; }
+  .wheel-slot b { display: block; font-size: 22px; color: #ffd24a; }
+  .wheel-slot span { display: block; font-size: 14px; font-weight: 700; margin: 4px 0; }
+  .wheel-slot em { font-size: 11px; color: #9ad8ff; font-style: normal; }
+  .screen { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center;
+    justify-content: center; z-index: 10; text-align: center;
+    background: linear-gradient(180deg, rgba(20, 8, 0, 0.55), rgba(8, 12, 20, 0.75)); }
+  .screen h1 { font-size: 64px; letter-spacing: 4px; color: #ffd24a;
+    text-shadow: 0 4px 0 #7a2a00, 0 8px 24px #000; }
+  .screen h2 { font-size: 18px; letter-spacing: 6px; color: #fff; margin: 6px 0 18px; }
+  .screen p { max-width: 620px; font-size: 14px; line-height: 1.6; color: #e8e0d0; }
+  .slot-btn, .menu-btn { pointer-events: auto; display: block; margin: 8px auto; padding: 10px 22px;
+    font-size: 14px; font-weight: 700; color: #1a0f08; background: #ffd24a; border: none;
+    border-radius: 6px; cursor: pointer; min-width: 340px; }
+  .slot-btn:hover, .menu-btn:hover { background: #ffe080; }
+  .menu-btn.ghost { background: rgba(255,255,255,0.15); color: #fff; }
+  #mission-list { margin-top: 16px; font-size: 13px; line-height: 1.7; color: #d8e8d8; text-align: left; }
+  #mission-list .done { color: #7aff9a; }
+  #garage-list { margin-top: 12px; width: 560px; }
+  .upg { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    background: rgba(8, 12, 20, 0.7); border: 1px solid rgba(255, 210, 74, 0.3);
+    border-radius: 8px; padding: 10px 14px; margin-top: 8px; text-align: left; font-size: 13px; }
+  .upg button { pointer-events: auto; padding: 8px 16px; font-weight: 700; background: #7aff9a;
+    border: none; border-radius: 6px; cursor: pointer; }
+  .upg button:disabled { background: #555; color: #aaa; cursor: default; }
+  #garage-money { font-size: 16px; color: #7aff9a; margin-top: 8px; }
+  .keys { margin-top: 18px; font-size: 12px; color: #b8c8d8; line-height: 1.8; }
+  .keys b { color: #ffd24a; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.min.js" } }
+</script>
+</head>
+<body>
+<div id="game"></div>
+<div id="hud">
+  <div id="top-left" class="panel">
+    <div id="stars"></div>
+    <div class="bar"><div id="health-fill"></div></div>
+    <div class="bar"><div id="armor-fill"></div></div>
+    <div id="health-text"></div>
+    <div id="money">$500</div>
+    <div id="respect"></div>
+  </div>
+  <div id="top-right" class="panel">
+    <div id="clock">17:42</div>
+    <div id="district">MARINA DISTRICT</div>
+    <div id="radio">VELAMAR FM 88.1</div>
+  </div>
+  <div id="bottom-left">
+    <canvas id="minimap" width="180" height="180"></canvas>
+    <div id="territory"></div>
+  </div>
+  <div id="bottom-right" class="panel">
+    <div id="speed">ON FOOT</div>
+    <div id="weapon">P9 Pistol</div>
+    <div id="ammo"></div>
+  </div>
+  <div id="objective"></div>
+  <div id="feed"></div>
+  <div id="prompt"></div>
+  <div id="controls-hint">WASD drive / walk · E steal car · Click shoot · 1-4 weapons · Q wheel · M mission · R race · T taxi · G garage · X driver · C hacker · B buy weapon · Esc pause</div>
+  <div id="wheel"></div>
+</div>
+
+<div id="title-screen" class="screen">
+  <h1>VELAMAR</h1>
+  <h2>SUN-SOAKED ISLAND CRIME EMPIRE</h2>
+  <p>Ten story jobs. Five stars of VCPD heat with PIT maneuvers, spike strips and HELIX-1 air support.
+  Steal cars, build your crew, win the street race league, and take every district of the island.</p>
+  <div id="save-slots" style="margin-top:16px"></div>
+  <div id="mission-list"></div>
+  <div class="keys"><b>ENTER</b> start · <b>WASD</b> drive/walk · <b>E</b> steal car · <b>Click</b> shoot · <b>M</b> mission · <b>G</b> garage</div>
+</div>
+
+<div id="pause-menu" class="screen">
+  <h1 style="font-size:42px">PAUSED</h1>
+  <p>Progress auto-saves after every mission.</p>
+  <button class="menu-btn" onclick="document.getElementById('pause-menu').style.display='none';window.__velamar.state='playing';window.__velamar.hud.showOnly(null)">RESUME</button>
+  <button class="menu-btn ghost" onclick="window.__velamar.state='title';window.__velamar.hud.showOnly('title');window.__velamar.hud.renderSaves(window.__velamar)">QUIT TO TITLE</button>
+</div>
+
+<div id="garage-screen" class="screen">
+  <h1 style="font-size:42px">VELAMAR GARAGE</h1>
+  <div id="garage-money"></div>
+  <div id="garage-list"></div>
+  <p style="margin-top:10px">Press <b>B</b> in the field to buy the next weapon tier. Esc closes the garage.</p>
+  <button class="menu-btn" onclick="window.__velamar.state='playing';window.__velamar.hud.showOnly(null)">BACK TO THE STREETS (Esc)</button>
+</div>
+
+<div id="dead-screen" class="screen">
+  <h1 style="font-size:42px;color:#ff5a3c">WASTED</h1>
+  <p>Velamar is unforgiving. Your crew keeps the car running — try again.</p>
+  <button class="menu-btn" onclick="location.reload()">RESPAWN</button>
+</div>
+
+<div id="busted-screen" class="screen">
+  <h1 style="font-size:42px;color:#4aa8ff">BUSTED</h1>
+  <p>VCPD took you in. Bail is cheap — the island is still yours to take.</p>
+  <button class="menu-btn" onclick="location.reload()">PAY BAIL &amp; RESPAWN</button>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
